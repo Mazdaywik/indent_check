@@ -33,7 +33,7 @@ def set_brace_style(file_path, style_indent):
 def check_brace_style(code, style, size_indent):
     with open(code, 'r') as file:
         error_lines = []
-        if style == 'allman':
+        if style == 'allman' or style == 'gnu':
             for i, line in enumerate(file):
                 line = line.rstrip()
                 if '{' in line and '};' in line:
@@ -44,22 +44,26 @@ def check_brace_style(code, style, size_indent):
                 elif '}' in line and not line.strip().startswith('}'):
                     error_lines.append("Строка " + str(
                         i + 1) + " : Фигурная скобка должна быть отформатирована согласно стилю!")
-        elif style == "gnu":
-            indent_level = 1
-            for i, line in enumerate(file):
-                line = line.rstrip()
-                if '{' in line and '};' in line:
-                    continue
-                elif '{' in line and line.strip() == '{':
-                    if not line == indent_level * size_indent * ' ' + '{':
-                        error_lines.append("Строка " + str(
-                            i + 1) + " : Фигурная скобка должна быть отформатирована согласно стилю!")
-                    indent_level += 2
-                elif '}' in line and line.strip() == '}':
-                    indent_level -= 2
-                    if not line == indent_level * size_indent * ' ' + '}':
-                        error_lines.append("Строка " + str(
-                            i + 1) + " : Фигурная скобка должна быть отформатирована согласно стилю!")
+        # elif style == "gnu":
+        #     indent_level = 1
+        #
+        #     for i, line in enumerate(file):
+        #         statement_exist = 'for' in line or 'if' in line or 'while' in line or 'else' in line
+        #         line = line.rstrip()
+        #         if '{' in line and '};' in line:
+        #             continue
+        #         elif '{' in line and line.strip() == '{':
+        #             if not line == indent_level * size_indent * ' ' + '{':
+        #                 error_lines.append("Строка " + str(
+        #                     i + 1) + " : Фигурная скобка должна быть отформатирована согласно стилю!")
+        #             indent_level += 2
+        #         elif '}' in line and line.strip() == '}':
+        #             indent_level -= 2
+        #             if not line == indent_level * size_indent * ' ' + '}':
+        #                 error_lines.append("Строка " + str(
+        #                     i + 1) + " : Фигурная скобка должна быть отформатирована согласно стилю!")
+        #         elif statement_exist:
+                    pass
         elif style == "kernel":
             for i, line in enumerate(file):
                 line = line.rstrip()
