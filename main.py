@@ -1,6 +1,6 @@
 import sys
 from indent import find_first_indented_line, check_indentation_consistency, multiplicity_of_spaces
-from matrix_demo import check_indent_matrix
+from matrix import check_indent_matrix
 from style import set_brace_style, check_brace_style
 
 size_indent = 0

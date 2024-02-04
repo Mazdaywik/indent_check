@@ -1,15 +1,24 @@
 import queue
 from utils import print_errors
 
+def error_array(line):
+    start_index = line.index('{')
+    end_index = line.index('}')
+    end_end_index = line.index(';')
+    if start_index < end_index and end_end_index - end_index == 1:
+        new_line = line[:start_index] + line[start_index + 1:end_index] + \
+                                        line[end_end_index + 1:]
+        return new_line
+    return line
 
-def get_level_indent_in_line(line, size_indent):
+def get_level_indent_in_line(line, indent_size):
     indent_level = 0
     indent = None
 
-    if size_indent > 0:
-        indent = ' ' * size_indent
-    elif size_indent < 0:
-        indent = '\t' * abs(size_indent)
+    if indent_size > 0:
+        indent = ' ' * indent_size
+    elif indent_size < 0:
+        indent = '\t' * abs(indent_size)
 
     while line.startswith(indent):
         indent_level += 1
@@ -19,133 +28,165 @@ def get_level_indent_in_line(line, size_indent):
 
 
 def get_line_key_elements(line, indent_size):
+    key_list = []
     key_elements = [
-        ['{', 'OPEN'],
-        ['}', 'CLOSE'],
-        ['if', 'IF'],
-        ['while', 'WHILE'],
-        ['for', 'FOR'],
+        '{',
+        '}',
+        'if',
+        'else',
+        'while',
+        'for',
+        'switch',
     ]
-    elements = queue.PriorityQueue()
 
-    for element in key_elements:
-        try:
-            index = line.index(element[0])
-            elements.put((index, element[0]))
-        except ValueError:
-            pass
+    if not line.strip():
+        key_list.append('EMPTY')
+        # print(key_list)
+        return key_list
+    else:
+        if '{' in line and '};' in line:
+            line = error_array(line)
+        elements = queue.PriorityQueue()
+        if len(line.strip()) > 1 and ';' == line.strip()[-1]:
+            elements.put((99999, ';'))
+        for element in key_elements:
+            try:
+                index = line.index(element)
+                elements.put((index, element))
+            except ValueError:
+                pass
 
-    line_indent = get_level_indent_in_line(line, indent_size)
+        indent_level = get_level_indent_in_line(line, indent_size)
+        key_list.append(f'INDENT_ELEMENT_{indent_level}')
+        while not elements.empty():
+            key_list.append(elements.get()[1])
 
-    sorted_list = [f'INDENT_ELEMENT_{line_indent}']
-    while not elements.empty():
-        sorted_list.append(elements.get()[1])
-
-    print(sorted_list)
-
-    return sorted_list
+        # print(key_list)
+        return key_list
 
 
 def get_matrix(file_path, indent_size):
     with open(file_path, 'r') as file:
-        lines_key_elements_matrix = []
-        # file_lines = file.readlines()
+        indent_matrix = []
         for line in file:
-            if not line.strip():
-                lines_key_elements_matrix.append(['EMPTY'])
-            else:
-                lines_key_elements_matrix.append(get_line_key_elements(line, indent_size))
-        return lines_key_elements_matrix
-
-
-def get_indent_name(size):
-    return f"INDENT_ELEMENT_{size}"
-
+            indent_matrix.append(get_line_key_elements(line, indent_size))
+    return indent_matrix
 
 def check_indent_matrix(file_path, indent_size, style):
+
+    def check_indent(line, indent_level, number, errors):
+        if not f"INDENT_ELEMENT_{indent_level}" in line:
+            errors.append(
+                f"Строка {number}: неправильный отступ. Ожидался отступ уровня {indent_level}")
+        return errors
+
+
     matrix = get_matrix(file_path, indent_size)
-
-    current_level = 0
+    next_level_plus = False
+    indent_level = 0
+    sing_statement_offset = [0, 0]
     errors = []
-    next_level_maybe = False
-    single_statements_offset = 0
 
-    for i, line in enumerate(matrix):
-        closeExist = '}' in line
-        openExist = '{' in line
-        index = i + 1
+    flag = 0
+
+    for number, line in enumerate(matrix, start=1):
         if 'EMPTY' in line:
             continue
+        else:
+            open_exist = '{' in line
+            close_exist = '}' in line
+            statement_exist = 'for' in line or 'if' in line or 'while' in line or 'else' in line
 
-        is_statement = 'for' in line or 'if' in line or 'while' in line
-        if not next_level_maybe:
-            single_statements_offset = 0
-        level = current_level + single_statements_offset
+            if style == 'kernel':
+                if open_exist:
+                    errors = check_indent(line, indent_level + sum(sing_statement_offset), number, errors)
+                    sing_statement_offset.append(0)
+                    indent_level += 1
+                elif close_exist:
+                    if len(sing_statement_offset) > 1 and flag != number - 1:
+                        sing_statement_offset.pop()
+                    indent_level -= 1
+                    errors = check_indent(line, indent_level + sum(sing_statement_offset), number, errors)
+                elif statement_exist and ';' != line[-1]:
+                    next_level_plus = True
+                    errors = check_indent(line, indent_level + sum(sing_statement_offset), number, errors)
+                    sing_statement_offset[len(sing_statement_offset) - 1] += 1
+                else:
+                    if next_level_plus:
+                        errors = check_indent(line, indent_level + sum(sing_statement_offset), number, errors)
+                        next_level_plus = False
+                        if len(sing_statement_offset) > 1:
+                            flag = number
+                            sing_statement_offset.pop()
+                    else:
+                        errors = check_indent(line, indent_level, number, errors)
 
-        if style == 'allman':
-            if openExist:
-                level -= single_statements_offset
-                single_statements_offset = 0
-                if not f"INDENT_ELEMENT_{level}" in line:
-                    errors.append(f"Строка {index}, неправильный отступ перед открывающейся фигурной скобкой. Ожидался отступ уровня - {current_level}")
-            if closeExist:
-                level -= single_statements_offset
-                single_statements_offset = 0
-                if not f"INDENT_ELEMENT_{level - 1}" in line:
-                    errors.append(f"Строка {index}, неправильный отступ перед закрывающейся фигурной скобкой. Ожидался отступ уровня - {current_level - 1}")
-            if not openExist and not closeExist:
-                if level != 0 and (line[0] != get_indent_name(level) and (line[0] != get_indent_name(level + 1)) if next_level_maybe else line[0] != get_indent_name(level)):
-                    errors.append(f"Строка {index}, неправильный отступ. Ожидался отступ уровня - {level}")
-            if openExist:
-                current_level += 1
-            if closeExist:
-                current_level -= 1
+            elif style == 'gnu':
+                if next_level_plus and not open_exist and not close_exist:
+                    sing_statement_offset[len(sing_statement_offset) - 1] += 1
 
-            next_level_maybe = False
-            if is_statement:
-                next_level_maybe = True
-                single_statements_offset += 1
+                if open_exist:
+                    sing_statement_offset.append(0)
+                    if next_level_plus:
+                        next_level_plus = False
+                    errors = check_indent(line, indent_level + sum(sing_statement_offset) + 1,
+                                          number, errors)
+                    indent_level += 2
+                elif close_exist:
+                    indent_level -= 2
+                    if len(sing_statement_offset) > 1 and flag != number - 1:
+                        sing_statement_offset.pop()
+                    errors = check_indent(line, indent_level + sum(sing_statement_offset) + 1,
+                                          number, errors)
+                elif statement_exist and ';' != line[-1]:
+                    next_level_plus = True
+                    errors = check_indent(line, indent_level + sum(sing_statement_offset),
+                                          number, errors)
+                else:
+                    if next_level_plus:
+                        errors = check_indent(line,
+                                              indent_level + sum(sing_statement_offset),
+                                              number, errors)
+                        next_level_plus = False
+                        if len(sing_statement_offset) > 1:
+                            flag = number
+                            sing_statement_offset.pop()
+                    else:
+                        errors = check_indent(line, indent_level, number, errors)
 
-        if style == 'gnu':
-            if closeExist:
-                level -= single_statements_offset
-                single_statements_offset = 0
-                if not f"INDENT_ELEMENT_{level - 1}" in line:
-                    errors.append(f"Строка {index}, неправильный отступ перед закрывающейся фигурной скобкой. Ожидался отступ уровня - {current_level - 1}")
-            if openExist:
+            elif style == 'allman':
+                if next_level_plus and not open_exist and not close_exist:
+                    sing_statement_offset[len(sing_statement_offset) - 1] += 1
 
-                if not f"INDENT_ELEMENT_{level + 1}" in line:
-                    errors.append(f"Строка {index}, неправильный отступ перед открывающейся фигурной скобкой. Ожидался отступ уровня - {current_level}")
-            if not openExist and not closeExist:
-                if current_level != 0 and ((line[0] != get_indent_name(level) and line[0] != get_indent_name(level + 1)) if next_level_maybe else line[0] != get_indent_name(level)):
-                    errors.append(f"Строка {index}, неправильный отступ. Ожидался отступ уровня - {level}")
-            if '{' in line:
-                current_level += 2
-            if '}' in line:
-                current_level -= 2
+                if open_exist:
+                    sing_statement_offset.append(0)
+                    if next_level_plus:
+                        next_level_plus = False
+                    errors = check_indent(line, indent_level + sum(sing_statement_offset),
+                                          number, errors)
+                    indent_level += 1
+                elif close_exist:
+                    indent_level -= 1
+                    if len(sing_statement_offset) > 1 and flag != number - 1:
+                        sing_statement_offset.pop()
+                    errors = check_indent(line, indent_level + sum(sing_statement_offset),
+                                          number, errors)
+                elif statement_exist and ';' != line[-1]:
+                    next_level_plus = True
+                    errors = check_indent(line, indent_level + sum(sing_statement_offset),
+                                          number, errors)
+                else:
+                    if next_level_plus:
+                        errors = check_indent(line,
+                                              indent_level + sum(sing_statement_offset),
+                                              number, errors)
+                        next_level_plus = False
+                        if len(sing_statement_offset) > 1:
+                            flag = number
+                            sing_statement_offset.pop()
+                    else:
+                        errors = check_indent(line, indent_level, number, errors)
 
-            next_level_maybe = False
-            if is_statement:
-                next_level_maybe = True
-                single_statements_offset += 1
-
-        if style == 'kernel':
-            if closeExist:
-                if not f"INDENT_ELEMENT_{level - 1}" in line:
-                    errors.append(f"Строка {index}, неправильный отступ перед закрывающейся фигурной скобкой. Ожидался отступ уровня - {current_level - 1}")
-            else:
-                if current_level != 0 and (line[0] != get_indent_name(level) and (line[0] != get_indent_name(level + 1)) if next_level_maybe else line[0] != get_indent_name(level)):
-                    errors.append(f"Строка {index}, неправильный отступ. Ожидался отступ уровня - {level}")
-            if openExist:
-                current_level += 1
-            if closeExist:
-                current_level -= 1
-
-            next_level_maybe = False
-            if is_statement and not openExist:
-                next_level_maybe = True
-                single_statements_offset += 1
-
-    print_errors(errors)
+    print(errors)
 
 
