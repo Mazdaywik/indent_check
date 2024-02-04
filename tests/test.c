@@ -1,20 +1,19 @@
-#include <stdio.h>
-
-typedef unsigned long long ullong;
-
-int main() {
-    ullong x, i, a[100] = {0, 1};
-    scanf("%llu", &x);
-
-    for (i = 2; (a[i] = a[i-1] + a[i-2]) <= x; i++);
-
-    if (x == 0)
-        printf("0");
-
-    while (i > 2) {
-        printf("%d", a[--i] <= x);
-        x -= a[i] * (a[i] <= x);
+int main(int argc, char** argv){
+    int n;
+    scanf("%d", &n);
+    int *array = calloc(n, sizeof(int));
+    for(int i = 0 ; i < n; i++){
+        scanf("%d", &array[i]);
+        for(int i = 0 ; i < n ; i++)
+            for(int i = 0 ; i < n; i++){
+                scanf("%d", &array[i]);
+                for(int i = 0 ; i < n ; i++)
+                    printf("%d ", array[i]);
+            }
     }
-
+    mergeSort(array, n);
+    for(int i = 0 ; i < n ; i++)
+        printf("%d ", array[i]);
+    free(array);
     return 0;
 }
