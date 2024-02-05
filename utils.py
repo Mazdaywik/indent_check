@@ -1,11 +1,12 @@
 import sys
+import subprocess
 
 
 def print_errors(errors):
-    if errors:
+    if len(errors) > 0:
         for error in errors:
             print(error)
-        sys.exit()
+        sys.exit(1)
 
 
 def most_common(lst):
@@ -27,3 +28,4 @@ def count_chars_for_indent(line):
             else:
                 print("Размер отступа: " + str(size_indent * (-1)) + " tab")
                 return size_indent
+

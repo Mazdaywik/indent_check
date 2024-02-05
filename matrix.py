@@ -1,6 +1,8 @@
 import queue
 import re
 
+from utils import print_errors
+
 
 def get_level_indent_in_line(line, indent_size):
     indent_level = 0
@@ -215,6 +217,6 @@ def check_indent_matrix(file_path, indent_size, style):
                 else:
                     errors = check_indent(line, indent_level, number, errors)
 
-    print(errors)
+    print_errors(errors)
 
 

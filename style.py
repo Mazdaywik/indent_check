@@ -30,7 +30,7 @@ def set_brace_style(file_path, style_indent):
         return style_indent
 
 
-def check_brace_style(code, style, size_indent):
+def check_brace_style(code, style):
     with open(code, 'r') as file:
         error_lines = []
         if style == 'allman' or style == 'gnu':

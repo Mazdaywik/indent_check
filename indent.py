@@ -2,6 +2,7 @@ from utils import print_errors, most_common, count_chars_for_indent
 
 
 def find_first_indented_line(file_path, size_indent, style_indent):
+    errors = []
     with open(file_path, 'r') as file:
         access_to_get_size = False
         for line in file:
@@ -14,7 +15,8 @@ def find_first_indented_line(file_path, size_indent, style_indent):
                     return size_indent
                 elif line.split()[0][0] == "{" or line.split()[-1][-1] == "{":
                     access_to_get_size = True
-    print("Отформатируйте код! Добавьте отступы!")
+    errors.append("Отформатируйте код! Добавьте отступы!")
+    print_errors(errors)
     return 0
 
 

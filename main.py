@@ -16,15 +16,19 @@ style_indent = set_brace_style(file_path, style_indent)
 size_indent = find_first_indented_line(file_path, size_indent, style_indent)
 
 check_indentation_consistency(file_path, size_indent)
+
+# GПроверка для пробелов
 if size_indent > 0:
     multiplicity_of_spaces(file_path, size_indent)
 
-    # Модуль стилей 2
+# Модуль стилей 2
 
-    check_brace_style(file_path, style_indent, size_indent)
+check_brace_style(file_path, style_indent)
 
-    # Модуль матриц
+# Модуль матриц
 
-    matrix = check_indent_matrix(file_path, size_indent, style_indent)
+matrix = check_indent_matrix(file_path, size_indent, style_indent)
+
+sys.exit(0)
 
 
